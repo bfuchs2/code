@@ -1,5 +1,6 @@
 #author bfuchs2
 #a semi-functional linked list implementation in Ruby
+#I wrote this to help me learn Ruby then stopped working on it
 class LL  
  attr_accessor :parent, :object, :child
   
