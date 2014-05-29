@@ -1,3 +1,5 @@
+#author bfuchs2
+#2048 in Ruby using Gosu
 require 'gosu'
 
 class Main < Gosu::Window

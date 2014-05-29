@@ -1,3 +1,2 @@
 @author bfuchs2
-summer 2014
-this is a version of the game 2-48 in Ruby using Gosu
+this is just a repository where I keep a bunch of code that doesn't really deserve it's own repository
