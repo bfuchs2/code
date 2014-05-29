@@ -14,9 +14,9 @@ class Main < Gosu::Window
     self.caption = "2048"
     @rand = Random.new
     regen
-    @font = Gosu::Font.new(self, Gosu::default_font_name, tilesize-20)
+    @font = Gosu::Font.new(self, Gosu::default_font_name, tilesize/2)
     @smallFont = Gosu::Font.new(self, Gosu::default_font_name, 20)
-    @@WAIT = 0.3
+    @@WAIT = 0.2
   end
 
   def regen
@@ -28,6 +28,7 @@ class Main < Gosu::Window
     @oldBoards = Array.new
     @kbDownTime = Time.now
     @score = 0
+    @moving = false
   end
 
   def placeRandomTile(board = @board)
@@ -63,7 +64,10 @@ class Main < Gosu::Window
     }
   end
 
-  #the move method must be purely functional, as it is called to check if the board changes
+  #the move method creates a new array of what the board would look like if the corresponding
+  #direction were pressed
+  #increment determines if the score should be changed by this move (if it's actually happening or just
+  #the computer thinking)
   def move dir, increment = false, board = @board, score = @score
     newScore = 0
     newBoard = Array.new(4){ |x|
@@ -110,17 +114,20 @@ class Main < Gosu::Window
   end
 
   def update
+    return if @moving
     regen if button_down? Gosu::KbR
-    if Time.now - @kbDownTime > @@WAIT
+    if Time.now - @kbDownTime > @@WAIT and !@moving
       dir = Dir::Up if button_down? Gosu::KbUp
       dir = Dir::Right if button_down? Gosu::KbRight
       dir = Dir::Left if button_down? Gosu::KbLeft
       dir = Dir::Down if button_down? Gosu::KbDown
       if dir
-        @oldBoards.push @board
-        @board = move dir, true
-        placeRandomTile @board unless @board == @oldBoards[-1]
-        @kbDownTime = Time.now
+        if @board != move(dir, false)
+          @futureBoard = move(dir, true)
+          @moveDir = dir
+          @moving = true
+          @kbDownTime = Time.now
+        end
       elsif button_down? Gosu::KbU and Time.now - @kbDownTime > @@WAIT
         @board = @oldBoards.pop unless @oldBoards.size == 0
         @kbDownTime = Time.now
@@ -129,18 +136,40 @@ class Main < Gosu::Window
     end
   end
 
+  def tileCoords(x, y)
+    if !@moving or @board[x][y] == @futureBoard[x][y]
+      [x*@tilesize+20, y*@tilesize+50]
+    else
+      moveAmount = (Time.now-@kbDownTime)*@tilesize/@@WAIT
+      case @moveDir
+      when Dir::Up then [x*@tilesize+20, y*@tilesize+50-moveAmount]
+      when Dir::Right then [x*@tilesize+20+moveAmount, y*@tilesize+50]
+      when Dir::Down then [x*@tilesize+20, y*@tilesize+50+moveAmount]
+      when Dir::Left then [x*@tilesize+20-moveAmount, y*@tilesize+50]
+      end
+    end
+  end
+  
   def draw
     @smallFont.draw("score:#{@score}", 20, 5, 1, 1.0, 1.0, 0xf0f0f000)
     @board.each_index do |x|
       @board[x].each_index do |y|
         unless @board[x][y] == 0
-          @font.draw("#{@board[x][y]}", x*@tilesize+20, y*@tilesize+50, 0, 1.0, 1.0, 0xffffff00)
+          @font.draw("#{@board[x][y]}", *tileCoords(x, y), 0, 1.0, 1.0, 0xffffff00)
         end
       end
     end
     if gameOver
       @font.draw("YOU SUCK", 20, 2*@tilesize-50, 1, 1.0, 1.0, 0xffff0000)
       @smallFont.draw("your final score was #{@score}", 20, 2*@tilesize+15, 1, 1.0, 1.0, 0xf0f00000)
+    end
+    #I know you aren't supposed to do computation in the draw method
+    #but this makes it so much easier
+    if @moving and Time.now - @kbDownTime > @@WAIT
+      @moving = false
+      @oldBoards.push @board
+      @board = @futureBoard
+      placeRandomTile
     end
   end
 
