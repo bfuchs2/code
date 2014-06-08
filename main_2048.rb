@@ -23,6 +23,9 @@ class Main < Gosu::Window
     @board = Array.new(4){ |x|
       Array.new(4, 0)
     }
+    @moveFactor = Array.new(4){ |x|
+      Array.new(4, 0)
+    }
     placeRandomTile
     placeRandomTile
     @oldBoards = Array.new
@@ -69,7 +72,7 @@ class Main < Gosu::Window
   #direction were pressed
   #increment determines if the score should be changed by this move (if it's actually happening or just
   #the computer thinking)
-  def move dir, increment = false, board = @board, score = @score
+  def move dir, increment = false, board = @board
     newScore = 0 if increment
     newBoard = Array.new(4){ |x|
       Array.new(board[x])
@@ -80,113 +83,68 @@ class Main < Gosu::Window
       }
     end
     if dir == Dir::Up
-      for row in 0...4
-        unless newBoard[row] == Array.new(4, 0)
-          #rather than deleting the zeroes, all the following things need to be kept track of for movement
-          if increment
-            posn = 0
-            while posn < 4
-              if newBoard[row][posn] == 0
-                for inc in posn+1..3
-                  @moveFactor[row][inc]+= 1
-                end
-                newBoard[row].delete_at(posn)
-              else
-                posn+=1
+      for column in 0...4
+        for row in 0...4
+          slid = false
+          if newBoard[column][row] > 0
+            for checker in (row+1)...4#this for loop only deals with the combining of similar tiles
+              if newBoard[column][checker] == newBoard[column][row]
+                newScore += newBoard[column][row] if increment
+                newBoard[column][row] *= 2
+                #puts newBoard
+                newBoard[column][checker] = 0
+                @moveFactor[column][checker] = checker - row if increment
+              elsif newBoard[column][checker] > 0
+                break
               end
-            end
-          else
-            newBoard[row].delete(0) #but if nothing is being changed, we do it this way 
-          end
-          #now it's time to combine similar tiles
-          if increment
-            newBoard[row].each_index{ |i|
-              if newBoard[row][i] == newBoard[row][i+1]
-                newScore += newBoard[row][i]
-                newBoard[row][i] *= 2
-                @moveFactor[row].each_index do |inc|
-                  if inc > i
-                    @moveFactor[row][inc] += 1
-                  end
-                end
-                newBoard[row].delete_at(i + 1)
+            end#end for checker
+          else#i.e newBoard[column][row] not greater than 0
+            for mover in (row+1)...4#this for loop deals with sliding tiles without combining
+              if newBoard[column][mover] > 0
+                newBoard[column][row] = newBoard[column][mover]
+                newBoard[column][mover] = 0
+                @moveFactor[column][mover] = mover - row if increment
+                slid = true
+                break
               end
-            }
-          else
-            newBoard[row].each_index{ |i|
-              if newBoard[row][i] == newBoard[row][i+1]
-                newBoard[row][i] *= 2
-                newBoard[row].delete_at(i + 1)
-              end
-            }
-          end
-          newBoard[row].concat(Array.new(4-newBoard[row].size, 0))
-        end
-      end
+            end#end for mover
+          end#end if newBoard[column][row] > 0
+          redo if slid
+        end#end for row
+      end#end for column
       @score += newScore if increment
     elsif dir == Dir::Right
-      newBoard = move Dir::Up, increment, rotate
+      newBoard = move Dir::Up, increment, rotate(newBoard)
       3.times{
         newBoard = rotate newBoard
         @moveFactor = rotate @moveFactor
       }
     elsif dir == Dir::Left
-      newBoard = move Dir::Down, increment, rotate
+      newBoard = move Dir::Down, increment, rotate(newBoard)
       3.times{
         newBoard = rotate newBoard
         @moveFactor = rotate @moveFactor
       }
     elsif dir == Dir::Down
-      for row in 0...4
-        unless newBoard[row] == Array.new(4, 0)
-          #rather than deleting the zeroes, all the following things need to be kept track of for movement
-          if increment
-            posn = 3
-            while posn >= 0
-              if newBoard[row][posn] == 0
-                for inc in 0..posn
-                  @moveFactor[row][inc]+= 1
-                end
-                newBoard[row].delete_at(posn)
-              else
-                posn-=1
-              end
-            end
-          else
-            newBoard[row].delete(0) #but if nothing is being changed, we do it this way 
-          end
-          #now it's time to combine similar tiles
-          if increment
-            newBoard[row].each_index{ |i|
-              if newBoard[row][-i-1] == newBoard[row][-i-2]
-                newScore += newBoard[row][-1]
-                newBoard[row][-i-1] *= 2
-                @moveFactor[row].each_index do |inc|
-                  if inc <= i
-                    @moveFactor[row][inc] += 1
-                  end
-                end
-                newBoard[row].delete_at(-i-2)
-              end
-            }
-          else
-            newBoard[row].each_index{ |i|
-              if newBoard[row][i] == newBoard[row][i+1]
-                newBoard[row][i] *= 2
-                newBoard[row].delete_at(i + 1)
-              end
-            }
-          end
-          (4-newBoard[row].size).times{newBoard[row].unshift(0)}
-        end
-      end
-      @score += newScore if increment
+      newBoard = move Dir::Right, increment, rotate(newBoard)
+      3.times{
+        newBoard = rotate newBoard
+        @moveFactor = rotate @moveFactor
+      }
     end
     newBoard
   end
 
   def update
-    return if @moving
+    @movement += 1
+    if @moving and @movement >= @tilesize
+      @moving = false
+      @oldBoards.push @board
+      @board = @futureBoard
+      @movement = 0
+      placeRandomTile
+    end
+    return if @moving  
     regen if button_down? Gosu::KbR
     if Time.now - @kbDownTime > @@WAIT and !@moving
       dir = Dir::Up if button_down? Gosu::KbUp
@@ -204,7 +162,8 @@ class Main < Gosu::Window
         @board = @oldBoards.pop unless @oldBoards.size == 0
         @kbDownTime = Time.now
       end
-      placeRandomTile if button_down? Gosu::KbQ
+      placeRandomTile if button_down? Gosu::KbQ #TODO for testing only
+      
     end
   end
 
@@ -228,7 +187,6 @@ class Main < Gosu::Window
   
   def draw
     @smallFont.draw("score:#{@score}", 20, 5, 1, 1.0, 1.0, 0xf0f0f000)
-    @movement += 1
     @board.each_index do |x|
       @board[x].each_index do |y|
         unless @board[x][y] == 0
@@ -242,13 +200,6 @@ class Main < Gosu::Window
     end
     #I know you aren't supposed to do computation in the draw method
     #but this makes it so much easier
-    if @moving and @movement >= @tilesize
-      @moving = false
-      @oldBoards.push @board
-      @board = @futureBoard
-      @movement = 0
-      placeRandomTile
-    end
   end
 
 end
