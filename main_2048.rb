@@ -11,6 +11,7 @@ class Main < Gosu::Window
   def initialize(tilesize = 100)
     super tilesize*4, tilesize*4+30, false
     @tilesize = tilesize
+    @@ANIMATION_SPEED = 3
     self.caption = "2048"
     @rand = Random.new
     regen
@@ -84,13 +85,15 @@ class Main < Gosu::Window
     end
     if dir == Dir::Up
       for column in 0...4
+        isNew = -1 #only declared here for scope reasons TODO check to see if this is necesary
         for row in 0...4
           slid = false
           if newBoard[column][row] > 0
             for checker in (row+1)...4#this for loop only deals with the combining of similar tiles
-              if newBoard[column][checker] == newBoard[column][row]
+              if newBoard[column][checker] == newBoard[column][row] and isNew != row
                 newScore += newBoard[column][row] if increment
                 newBoard[column][row] *= 2
+                isNew = row #that should work... right?
                 #puts newBoard
                 newBoard[column][checker] = 0
                 @moveFactor[column][checker] = checker - row if increment
@@ -136,7 +139,7 @@ class Main < Gosu::Window
   end
 
   def update
-    @movement += 1
+    @movement += @@ANIMATION_SPEED
     if @moving and @movement >= @tilesize
       @moving = false
       @oldBoards.push @board
