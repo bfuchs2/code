@@ -29,7 +29,6 @@ class LL
       remove(1)
     elsif(link == @child)
       @child = @child.child
-      @child.parent = self
     elsif(@child)
       @child.linkRemove(link)
     end
@@ -144,43 +143,58 @@ class LL
   end
   
   def linkSwap(one, two)
+    return false if one == two
     one.object, two.object = two.object, one.object
   end
   
-  def self.bucketSort(topLink)
-    i = topLink
+  def bucketSort
+    i = self
     while i.child
       if(i.greaterThan(i.child))
-        topLink.linkSwap(i, i.child)
+        self.linkSwap(i, i.child)
         i = topLink
       else
         i = i.child
       end
     end
-    return topLink
+    return self
   end
   
-  def self.selectionSort(topLink)
-    place = topLink
-    while place
-      min = i = place
+  def selectionSort(topLink)
+    min = i = self
+    while i
+      min = i if i.lessThan(min)
+      i = i.child
+    end
+    self.linkSwap(self, min)
+    LL.selectionSort(@child) if @child
+    self
+  end
+  
+  def insertionSort
+    for index in 0...length
+      min = i = getLink(index)
       while i
         min = i if i.lessThan(min)
         i = i.child
       end
-      topLink.linkSwap(place, min)
-      place = place.child
+      linkRemove(min)
+      linkInsert(min, index)
     end
-    topLink
   end
   
   def self.generate(i = 15, max = 100)
     r = Random.new
     ll = LL.new(r.rand(max))
-    for x in 1..i
+    i.times do 
       ll.add(r.rand(max))
     end
     return ll
   end
 
 end
+
+ll = LL.new([3, 5, 1, 12, 53, 2])
+print ll.toArray, "\n"
+ll.insertionSort
+print ll.toArray, "\n"
