@@ -20,13 +20,15 @@ class Eg
         primes[i * prime - 2] = nil
         i += 1
       end
-      begin
+      x+= 1
+      until primes[x] or x > primes.length
         x += 1
-      end until primes[x]
+      end
     end
     primes.compact
   end
   
+  #prime factors of n
   def self.factor(n)#O(sqrt(n))
     return [1] if n == 1
     r = Array.new
@@ -40,6 +42,7 @@ class Eg
     r
   end
   
+  #prime factors of n
   def self.factors(n)#O(n)
     r = Array.new
     for x in 1..n-1
@@ -54,9 +57,7 @@ class Eg
     a = b = 1
     (n-1).times{
       a += b
-      temp = a
-      a = b
-      b = temp
+      a,b = b,a
     }
     return a
   end
@@ -87,5 +88,13 @@ class Eg
   
   def self.eval(x)#O(1)
     yield(x)
+  end
+  
+  def self.q(primes)
+    ret = 1
+    for p in primes
+      ret *= p
+    end
+    return ret + 1
   end
 end
