@@ -16,7 +16,7 @@ class Fraction < Numeric
       @den = @den.abs
       @num = @num.abs
       min = @den.abs < @num.abs ? @den.abs : @num.abs
-      if min < 10000
+      if true # TODO optimize min < 10000 
         for x in 2..min
           while @den % x == 0 and @num % x == 0
             @num /= x
@@ -69,6 +69,8 @@ class Fraction < Numeric
   def *(other)
     if other.is_a? Fraction
       return Fraction.new(@num*other.num, @den*other.den, @active)
+    elsif (other.round - other).abs > other/100
+      return eval*other
     else
       return Fraction.new(@num*other, @den, @active)
     end     
@@ -77,8 +79,10 @@ class Fraction < Numeric
   def /(other)
     if other.is_a? Fraction
       return Fraction.new(@num*other.den, @den*other.num, @active)
+    elsif (other.round - other).abs > other/100
+       return eval/other
     else
-      return Fraction.new(@num, @den*other, @active)
+       return Fraction.new(@num, @den*other, @active)
     end
   end
   
